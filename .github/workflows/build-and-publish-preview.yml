@@ -1,0 +1,223 @@
+name: Build and publish APK Runner WSL2 preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Source branch, tag, or commit to package"
+        required: true
+        type: string
+        default: "feature/ubuntu-apk-picker-ui"
+      publish_preview:
+        description: "Confirm publication as an advanced-host preview (not a portable installer)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Test, publish and package Linux desktop app
+    if: inputs.publish_preview == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release repository
+        uses: actions/checkout@v4
+        with:
+          path: release-repo
+
+      - name: Check out selected source revision
+        uses: actions/checkout@v4
+        with:
+          repository: greatPHPer/AlgoLassiAPKRunner
+          ref: ${{ inputs.source_ref }}
+          path: source
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Restore, build and test source
+        working-directory: source
+        run: |
+          set -Eeuo pipefail
+          dotnet restore AlgoLassiAPKRunner.sln
+          dotnet build AlgoLassiAPKRunner.sln --configuration Release --no-restore
+          dotnet test AlgoLassiAPKRunner.sln --configuration Release --no-build
+          python3 -m unittest discover -s tests/wsl2 -v
+          for script in scripts/wsl2/*.sh; do
+            bash -n "$script"
+          done
+          python3 -m py_compile scripts/wsl2/*.py tests/wsl2/*.py
+
+      - name: Publish self-contained Linux x64 desktop app
+        working-directory: source
+        run: |
+          dotnet publish src/APKRunner.Desktop/APKRunner.Desktop.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=None \
+            -p:DebugSymbols=false \
+            --output publish/linux-x64
+
+      - name: Assemble advanced-host preview bundle
+        working-directory: source
+        run: |
+          set -Eeuo pipefail
+          STAGE="$RUNNER_TEMP/AlgoLassiAPKRunner-Preview"
+          mkdir -p "$STAGE/app" "$STAGE/scripts/wsl2" "$STAGE/scripts/windows" "$STAGE/src/APKRunner.Desktop" "$STAGE/docs/development"
+
+          cp -a publish/linux-x64/. "$STAGE/app/"
+          chmod +x "$STAGE/app/APKRunner.Desktop"
+          cp -a scripts/wsl2/. "$STAGE/scripts/wsl2/"
+          cp scripts/windows/Start-APKRunner.ps1 "$STAGE/scripts/windows/"
+          cp .env.example "$STAGE/.env.example"
+          cp -a src/APKRunner.Desktop/. "$STAGE/src/APKRunner.Desktop/"
+          cp docs/development/ubuntu-desktop-launcher.md "$STAGE/docs/development/"
+
+          cat > "$STAGE/README-PREVIEW.md" <<'README'
+          # AlgoLassi APK Runner — WSL2 Advanced-Host Preview
+
+          **This is an experimental application bundle for an already provisioned Windows + WSL2 + WSLg + Ubuntu + LXC Android environment. It is not a one-click installer and is not certified for clean machines.**
+
+          ## What's included
+
+          - Self-contained Linux x64 Avalonia desktop control panel (the .NET runtime is included).
+          - WSL2 runtime, Android session, APK install and app-launch helper scripts.
+          - Windows PowerShell launcher that derives the extracted package path.
+          - Example .env runtime settings and the desktop-launcher notes.
+
+          ## Required host setup (not included)
+
+          - Windows 11 x64 with WSL2 and WSLg.
+          - A configured Ubuntu WSL2 distribution with systemd.
+          - A WSL2 kernel already configured with the Android Binder/BinderFS, AppArmor and cgroup features required by this experimental runtime.
+          - A compatible LXC 6.0.6 installation and an APK Runner-compatible LXC container configuration.
+          - Compatible Android 13 x86-64 system and vendor images, with provenance and licensing established by the operator. No Android image is included.
+          - Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
+
+          This archive does not install or replace the WSL kernel, provision a new LXC container, download Android images, or configure a clean WSL distribution. Do not use it as a substitute for the full installation guide.
+
+          ## Configure
+
+          1. Extract this archive to a directory on a Windows drive accessible from the chosen WSL distribution.
+          2. In the extracted directory, copy .env.example to .env.
+          3. Edit .env and set APK_RUNNER_SYSTEM_IMAGE and APK_RUNNER_VENDOR_IMAGE to the exact Linux paths of your compatible Android images.
+          4. Confirm that those images and the configured LXC runtime match the kernel and Android image versions in your environment.
+          5. Ensure the Ubuntu native libraries listed above are installed.
+
+          ## Launch
+
+          From Windows PowerShell, in the extracted package directory:
+
+          .\scripts\windows\Start-APKRunner.ps1 -Distribution Ubuntu-D
+
+          Replace Ubuntu-D with your configured WSL distribution name. Keep the terminal open; it prompts for sudo authorization before the GUI opens.
+
+          You can also start it from the package directory inside Ubuntu:
+
+          bash scripts/wsl2/run-apk-runner.sh
+
+          ## APK support and limitations
+
+          - The first UI workflow supports one ordinary .apk file at a time. Split APK sets (.apks) and Android App Bundles (.aab) are not supported.
+          - ARM-only APKs, Google Play services, DRM-dependent apps and universal Android app compatibility are not promised.
+          - APK install/launch should be treated as experimental until verified on the exact target host.
+          - A WSLg restore/redraw artifact has been observed after restoring from maximized mode.
+          - APK Runner is not a hardened security sandbox. Install only APKs you trust.
+
+          ## Validation status
+
+          This bundle is built from the source revision recorded in the release notes. Automated build/unit/helper tests run before packaging. They do not prove end-to-end WSL kernel, Android boot, APK installation, clean-machine portability or app compatibility.
+
+          Report the release tag, source commit, Windows build, WSL and Ubuntu versions, CPU architecture, and relevant redacted logs when reporting problems. Never include credentials, .env, Android user data or private image files.
+          README
+
+          cd "$RUNNER_TEMP"
+          zip -qr "APKRunner-WSL2-Preview-linux-x64.zip" "AlgoLassiAPKRunner-Preview"
+          sha256sum "APKRunner-WSL2-Preview-linux-x64.zip" > "SHA256SUMS.txt"
+
+      - name: Upload candidate package as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: APKRunner-WSL2-Preview-linux-x64
+          path: |
+            ${{ runner.temp }}/APKRunner-WSL2-Preview-linux-x64.zip
+            ${{ runner.temp }}/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create versioned Preview 1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          TAG="v0.1.0-preview.1"
+
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Release $TAG already exists. Refusing to replace or overwrite it."
+            exit 1
+          fi
+
+          SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          cat > release-notes.md <<NOTES
+          # AlgoLassi APK Runner v0.1.0 Preview 1
+
+          **Advanced-host WSL2 preview — not a one-click installer and not clean-machine portable.**
+
+          This release includes the self-contained Linux x64 APK Runner desktop control panel and the experimental WSL2 helper scripts. It is intended for technically experienced testers who already have a compatible Windows + WSL2 + WSLg + Ubuntu + LXC Android environment.
+
+          ## Build provenance
+
+          - Source repository: https://github.com/greatPHPer/AlgoLassiAPKRunner
+          - Requested source ref: $SOURCE_REF
+          - Exact source commit: $SOURCE_SHA
+          - Build: GitHub Actions workflow $GITHUB_WORKFLOW, run #$GITHUB_RUN_NUMBER
+          - Automated .NET build/tests, Python WSL2 helper tests, Bash syntax checks and Linux x64 self-contained publish completed before packaging.
+
+          ## Included files
+
+          - APKRunner-WSL2-Preview-linux-x64.zip — desktop apphost, runtime helper scripts, Windows launcher and setup notes.
+          - SHA256SUMS.txt — SHA-256 checksum for the ZIP.
+
+          ## Required dependencies not included
+
+          - Windows 11 x64, WSL2, WSLg and a configured Ubuntu WSL2 distribution.
+          - A compatible custom WSL2 kernel with Android Binder/BinderFS, AppArmor and cgroup support.
+          - LXC 6.0.6 and an APK Runner-compatible container configuration.
+          - Operator-provided Android 13 x86-64 system/vendor images. Android images, kernel images and modules are deliberately not distributed in this release.
+          - Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
+
+          Follow README-PREVIEW.md inside the archive. Copy .env.example to .env and configure your own image paths before launching.
+
+          ## Important limitations
+
+          This preview does not provision a clean WSL distribution, install or replace the WSL kernel, create a complete LXC/Android runtime from scratch, or establish general portability. It supports one ordinary APK at a time; split APK bundles and AAB are not supported. APK install/launch and window behavior remain experimental and must be validated on the target host. A WSLg restore/redraw artifact is known. APK Runner is not a security sandbox.
+
+          Automated CI is not a substitute for end-to-end validation on a second Windows machine. No universal compatibility or production-readiness claim is made.
+          NOTES
+
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/APKRunner-WSL2-Preview-linux-x64.zip" \
+            "$RUNNER_TEMP/SHA256SUMS.txt" \
+            --repo "$GH_REPO" \
+            --target main \
+            --prerelease \
+            --title "APK Runner v0.1.0 Preview 1 — WSL2 advanced-host bundle" \
+            --notes-file release-notes.md
+
+          echo "Published $TAG from source commit $SOURCE_SHA."
