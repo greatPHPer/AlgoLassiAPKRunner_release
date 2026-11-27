@@ -178,7 +178,7 @@ jobs:
 
           **Advanced-host WSL2 preview — not a one-click installer and not clean-machine portable.**
 
-          This release includes the self-contained Linux x64 APK Runner desktop control panel and the experimental WSL2 helper scripts. It is intended for technically experienced testers who already have a compatible Windows + WSL2 + WSLg + Ubuntu + LXC Android environment.
+          This release includes the framework-dependent Linux x64 APK Runner desktop control panel (requires the .NET 10 runtime) and the experimental WSL2 helper scripts. It is intended for technically experienced testers who already have a compatible Windows + WSL2 + WSLg + Ubuntu + LXC Android environment.
 
           ## Build provenance
 
