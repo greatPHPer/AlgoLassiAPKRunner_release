@@ -7,6 +7,7 @@ This repository is the public distribution home for **AlgoLassi APK Runner**. Pu
 ## Project links
 
 - **Development source:** https://github.com/greatPHPer/AlgoLassiAPKRunner
+- **Active development branch:** https://github.com/greatPHPer/AlgoLassiAPKRunner/tree/feature/wsl2-reproducible-bootstrap
 - **Development runtime bootstrap notes:** https://github.com/greatPHPer/AlgoLassiAPKRunner/blob/feature/wsl2-reproducible-bootstrap/docs/development/wsl2-runtime-bootstrap.md
 - **Development baseline:** https://github.com/greatPHPer/AlgoLassiAPKRunner/blob/feature/wsl2-reproducible-bootstrap/docs/development/wsl2-reproducibility-baseline.md
 - **Release readiness gates:** [docs/RELEASE-READINESS.md](docs/RELEASE-READINESS.md)
@@ -17,10 +18,13 @@ Validated on the development machine:
 
 - Custom WSL2 kernel boots with Android Binder/BinderFS and AppArmor support.
 - LXC 6.0.6 starts the Android 13 x86-64 userspace.
-- Android reaches sys.boot_completed=1.
+- Android reaches `sys.boot_completed=1`.
 - F-Droid launches in the WSLg desktop session.
 - The runtime can be cold-started using the repository's experimental bootstrap scripts.
 - The kernel candidate's embedded configuration matches the active configuration; the existing modules VHDX passed ABI checks.
+- Resize, Alt+Tab, minimize, maximize and restore have been exercised for Android application windows.
+
+The WSLg window lifecycle is functional for these basic operations, but one redraw/stacking artifact remains under investigation: after restoring from a maximized state, a stale maximized image can appear behind the application window until focus changes (for example, by using Alt+Tab). This is a compositor/display issue observed in the development environment, not evidence that Android failed to boot.
 
 Still required before a public release:
 
@@ -29,9 +33,8 @@ Still required before a public release:
 - Android system/vendor image provenance and license review. Redistribution is not approved, so these images must not be bundled or mirrored by this project at this stage.
 - A repeatable install/uninstall/upgrade process.
 - Clean-machine validation on a second Windows host.
-- Release checksums, provenance, notices and a documented support matrix.
-
-The WSLg window stacking/tooltip issue is a known development-environment limitation. It is not being represented as resolved or as a failure of Android boot.
+- End-to-end APK installation/launch validation and a documented support matrix.
+- Release checksums, provenance, notices and security review.
 
 ## Release policy
 
