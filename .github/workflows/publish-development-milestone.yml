@@ -1,0 +1,81 @@
+name: Publish development milestone
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_non_downloadable:
+        description: "Confirm this is a development milestone with no installable binaries"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish non-downloadable milestone
+    if: inputs.confirm_non_downloadable == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the tagged GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          TAG="dev-milestone-2026.11.27"
+          TITLE="Development milestone — no downloadable build"
+
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it."
+            exit 1
+          fi
+
+          cat > release-notes.md <<'NOTES'
+          # AlgoLassi APK Runner — Development milestone
+
+          **This is a progress record, not an installable software release. No binaries or downloadable packages are attached.**
+
+          ## Development progress recorded
+
+          - Windows PowerShell launcher starts the Ubuntu/WSLg desktop control panel.
+          - Ubuntu-native APK selection and Android package-ID detection are implemented.
+          - The Android 13 x86-64 LXC runtime started successfully on the development machine and reached `sys.boot_completed=1`.
+          - App-only multi-window mode was activated.
+          - APK installation was being validated. The initial `pm install ... -` stdin invocation was rejected by Android 13; the install helper has since been changed to use the `install-create`, `install-write`, and `install-commit` session workflow. End-to-end success of that corrected flow is not yet confirmed in this milestone.
+
+          ## What this milestone does not provide
+
+          - No installer, executable bundle, kernel package, Android system/vendor image, or other binary download.
+          - No claim of clean-machine portability or general availability.
+          - No guarantee of compatibility with all Windows/WSL configurations or APKs.
+
+          ## Remaining release gates
+
+          - Confirm APK install, launcher resolution and independent WSLg app-window launch.
+          - Reproduce the complete setup on a clean second Windows + WSL2 environment.
+          - Produce reproducible, machine-independent packaging and matching checksums.
+          - Complete Android image/kernel provenance, licensing and redistribution review.
+          - Document supported hosts, recovery/uninstall procedure and known limitations.
+
+          ## Project links
+
+          - Development source: https://github.com/greatPHPer/AlgoLassiAPKRunner
+          - Official release repository: https://github.com/greatPHPer/AlgoLassiAPKRunner_release
+          - AlgoLassi product page: https://algolassi.online/products/apk-runner/
+          - Release readiness checklist: https://github.com/greatPHPer/AlgoLassiAPKRunner_release/blob/main/docs/RELEASE-READINESS.md
+
+          This pre-release exists only to record the development milestone and exercise the product-page release feed. Do not use it as a software download.
+          NOTES
+
+          gh release create "$TAG" \
+            --repo "$GH_REPO" \
+            --target main \
+            --prerelease \
+            --title "$TITLE" \
+            --notes-file release-notes.md
+
+          echo "Published $TAG as a non-downloadable pre-release."
