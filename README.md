@@ -1,5 +1,9 @@
 # AlgoLassi APK Runner — Releases
 
+**Official AlgoLassi product page:** https://algolassi.online/products/apk-runner/
+
+The product page reads this repository's public GitHub Releases API and displays published release notes, assets, file sizes and per-asset download counts. Publishing a release here updates the product page automatically; no product-page code edit is needed for each version.
+
 This repository is the public distribution home for **AlgoLassi APK Runner**. Published downloads, checksums, release notes and installation guidance will be attached to GitHub Releases here.
 
 > **No installable release has been published yet.** The current project is an interactive Android 13 x86-64 proof of concept validated on one Windows 11 + WSL2 + WSLg development machine. It is not yet a portable installer and has not passed a clean-machine installation test.
