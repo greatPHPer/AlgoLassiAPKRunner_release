@@ -58,15 +58,15 @@ jobs:
           done
           python3 -m py_compile scripts/wsl2/*.py tests/wsl2/*.py
 
-      - name: Publish self-contained Linux x64 desktop app
+      - name: Publish framework-dependent Linux x64 desktop app
         working-directory: source
         run: |
           dotnet publish src/APKRunner.Desktop/APKRunner.Desktop.csproj \
             --configuration Release \
             --runtime linux-x64 \
-            --self-contained true \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
+            --self-contained false \
+            -p:UseAppHost=false \
+            -p:PublishSingleFile=false \
             -p:DebugType=None \
             -p:DebugSymbols=false \
             --output publish/linux-x64
@@ -79,7 +79,6 @@ jobs:
           mkdir -p "$STAGE/app" "$STAGE/scripts/wsl2" "$STAGE/scripts/windows" "$STAGE/src/APKRunner.Desktop" "$STAGE/docs/development"
 
           cp -a publish/linux-x64/. "$STAGE/app/"
-          chmod +x "$STAGE/app/APKRunner.Desktop"
           cp -a scripts/wsl2/. "$STAGE/scripts/wsl2/"
           cp scripts/windows/Start-APKRunner.ps1 "$STAGE/scripts/windows/"
           cp .env.example "$STAGE/.env.example"
@@ -93,7 +92,7 @@ jobs:
 
           ## What's included
 
-          - Self-contained Linux x64 Avalonia desktop control panel (the .NET runtime is included).
+          - Linux x64 Avalonia desktop control panel as a published .NET assembly.
           - WSL2 runtime, Android session, APK install and app-launch helper scripts.
           - Windows PowerShell launcher that derives the extracted package path.
           - Example .env runtime settings and the desktop-launcher notes.
@@ -105,7 +104,7 @@ jobs:
           - A WSL2 kernel already configured with the Android Binder/BinderFS, AppArmor and cgroup features required by this experimental runtime.
           - A compatible LXC 6.0.6 installation and an APK Runner-compatible LXC container configuration.
           - Compatible Android 13 x86-64 system and vendor images, with provenance and licensing established by the operator. No Android image is included.
-          - Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
+          - .NET 10 runtime and Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
 
           This archive does not install or replace the WSL kernel, provision a new LXC container, download Android images, or configure a clean WSL distribution. Do not use it as a substitute for the full installation guide.
 
@@ -187,11 +186,11 @@ jobs:
           - Requested source ref: $SOURCE_REF
           - Exact source commit: $SOURCE_SHA
           - Build: GitHub Actions workflow $GITHUB_WORKFLOW, run #$GITHUB_RUN_NUMBER
-          - Automated .NET build/tests, Python WSL2 helper tests, Bash syntax checks and Linux x64 self-contained publish completed before packaging.
+          - Automated .NET build/tests, Python WSL2 helper tests, Bash syntax checks and Linux x64 publish completed before packaging.
 
           ## Included files
 
-          - APKRunner-WSL2-Preview-linux-x64.zip — desktop apphost, runtime helper scripts, Windows launcher and setup notes.
+          - APKRunner-WSL2-Preview-linux-x64.zip — published desktop assembly, runtime helper scripts, Windows launcher and setup notes.
           - SHA256SUMS.txt — SHA-256 checksum for the ZIP.
 
           ## Required dependencies not included
@@ -200,7 +199,7 @@ jobs:
           - A compatible custom WSL2 kernel with Android Binder/BinderFS, AppArmor and cgroup support.
           - LXC 6.0.6 and an APK Runner-compatible container configuration.
           - Operator-provided Android 13 x86-64 system/vendor images. Android images, kernel images and modules are deliberately not distributed in this release.
-          - Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
+          - .NET 10 runtime and Ubuntu native libraries: libfontconfig1, libice6, libsm6, libx11-6.
 
           Follow README-PREVIEW.md inside the archive. Copy .env.example to .env and configure your own image paths before launching.
 
