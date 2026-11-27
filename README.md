@@ -6,6 +6,8 @@ The product page reads this repository's public GitHub Releases API and displays
 
 A one-time, non-downloadable development milestone can be published from **Actions → Publish development milestone → Run workflow**. Check the required confirmation that no installable binaries are attached. This records progress only; it is not Preview 1 or a portable release. The workflow creates tag `dev-milestone-2026.11.27` as a pre-release and intentionally attaches no assets.
 
+The advanced-host package workflow is available under **Actions → Build and publish APK Runner WSL2 preview**. It checks out the selected source ref, runs .NET/Python/shell validation, publishes a self-contained Linux x64 desktop app, packages the Windows launcher and WSL2 helpers, calculates SHA-256, and creates `v0.1.0-preview.1` as a pre-release only after the required manual confirmation is selected. The package requires an already provisioned WSL2/LXC/Android host; it is not a one-click installer and intentionally excludes Android images and kernel modules.
+
 This repository is the public distribution home for **AlgoLassi APK Runner**. Published downloads, checksums, release notes and installation guidance will be attached to GitHub Releases here.
 
 > **No installable release has been published yet.** The current project is an interactive Android 13 x86-64 proof of concept validated on one Windows 11 + WSL2 + WSLg development machine. It is not yet a portable installer and has not passed a clean-machine installation test.
