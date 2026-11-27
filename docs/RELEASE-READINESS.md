@@ -4,6 +4,8 @@ This document is the release gate for the public distribution repository. It is 
 
 **Current decision: HOLD — no downloadable release is approved yet.**
 
+The public product page is https://algolassi.online/products/apk-runner/. It reads published releases, release notes and asset metadata from this repository's GitHub Releases API. Once an approved release is published here, it will appear on the product page automatically. The page currently reports that no public download is available; do not create an empty release just to populate the feed.
+
 The project has demonstrated an interactive Android 13 x86-64 userspace in an LXC container on one Windows 11 + WSL2 + WSLg development machine. It has not yet demonstrated a clean-machine installation or a relocatable end-user package.
 
 ## 1. Current validated scope
